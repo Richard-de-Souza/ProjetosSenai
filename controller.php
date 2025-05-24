@@ -50,6 +50,10 @@ if($funcao == 'editarPizza') {
     editarPizza($conn);
 }
 
+if($funcao == 'editarCliente') {
+    editarCliente($conn);
+}
+
 
 
 function listarPedidos($conn) {
