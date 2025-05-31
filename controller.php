@@ -34,6 +34,12 @@ if ($funcao == 'adicionarCliente') {
 if ($funcao == 'deletarCliente') {
     deletarCliente($conn);
 }
+if($funcao == 'editarCliente') {
+    editarCliente($conn);
+}
+if($funcao == 'detalhesCliente') {
+    detalhesCliente($conn);
+}
 
 
 
@@ -53,9 +59,6 @@ if($funcao == 'detalhesPizza') {
     detalhesPizza($conn);
 }
 
-if($funcao == 'editarCliente') {
-    editarCliente($conn);
-}
 
 
 
@@ -296,7 +299,66 @@ function deletarCliente($conn) {
     }
 }
 
+function editarCliente($conn) {
+    $id = $_POST['id'];
+    $nome = $_POST['nome'];
+    $cpf = $_POST['cpf'];
+    $telefone = $_POST['telefone']; 
+    $endereco = $_POST['endereco'];
 
+    try {
+        $sql = "UPDATE cliente SET nome = ?, cpf = ?, telefone = ?, endereco = ? WHERE id = ?";
+        $stmt = $conn->prepare($sql);
+        $stmt->execute([$nome, $cpf, $telefone, $endereco, $id]);
+
+        // Monta string SQL com valores
+        $sqlComValores = "UPDATE cliente SET nome = '" . addslashes($nome) . 
+                         "', cpf = '" . addslashes($cpf) . 
+                         "', telefone = '" . addslashes($telefone) . 
+                         "', endereco = '" . addslashes($endereco) . 
+                         "' WHERE id = " . intval($id);
+
+        echo json_encode([
+            'status' => 'success',
+            'mensagem' => 'Cliente atualizado com sucesso.',
+            'sql' => $sqlComValores
+        ]);
+    } catch (Exception $e) {
+        echo json_encode([
+            'status' => 'error',
+            'mensagem' => 'Erro ao atualizar cliente: ' . $e->getMessage()
+        ]);
+    }
+}
+
+
+function detalhesCliente($conn) {
+    if (!isset($_GET['id'])) {
+        echo json_encode([
+            'status' => 'error',
+            'mensagem' => 'ID do cliente não informado.'
+        ]);
+        return;
+    }
+
+    $id = $_GET['id'];
+    $sql = "SELECT * FROM cliente WHERE id = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->execute([$id]);
+    $cliente = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$cliente) {
+        echo json_encode([
+            'status' => 'error',
+            'mensagem' => 'Cliente não encontrado.'
+        ]);
+    } else {
+        echo json_encode([
+            'status' => 'success',
+            'cliente' => $cliente
+        ]);
+    }
+}
 
 function listarPizzas($conn) {
     $sql = "SELECT * FROM sabores_pizzas";
