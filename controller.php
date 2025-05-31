@@ -53,6 +53,11 @@ if($funcao == 'detalhesPizza') {
     detalhesPizza($conn);
 }
 
+if($funcao == 'editarCliente') {
+    editarCliente($conn);
+}
+
+
 
 function listarPedidos($conn) {
     $sql = "SELECT 
