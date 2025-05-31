@@ -23,6 +23,12 @@ if ($funcao == 'adicionarPedido') {
 if ($funcao == 'deletarPedido') {
     deletarPedido($conn);
 }
+if($funcao == 'buscarPedido') {
+    buscarPedido($conn);
+}
+if($funcao == 'editarPedido') {
+    editarPedido($conn);
+}
 
 
 if ($funcao == 'listarClientes') {
@@ -96,13 +102,37 @@ function detalhesPedido($conn) {
     $stmt->execute([$id_pedido]);
     $sabores = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Opcional: formatar valor para string moeda brasileira (R$ 00,00)
     foreach ($sabores as &$item) {
-        $item['valor_formatado'] = 'R$ ' . number_format($item['valor'], 2, ',', '.');
+        $valor_base = floatval($item['valor']);
+        $tamanho = strtolower($item['tamanho']);
+
+        // Define multiplicador por tamanho
+        switch ($tamanho) {
+            case 'pequena':
+            case 'p':
+                $multiplicador = 1.0;
+                break;
+            case 'media':
+            case 'm':
+                $multiplicador = 1.5;
+                break;
+            case 'grande':
+            case 'g':
+                $multiplicador = 2.0;
+                break;
+            default:
+                $multiplicador = 1.0; // fallback
+        }
+
+        $valor_final = $valor_base * $multiplicador;
+        $item['valor'] = $valor_final;
+        $item['valor_formatado'] = 'R$ ' . number_format($valor_final, 2, ',', '.');
     }
 
     echo json_encode(['status' => 'success', 'sabores' => $sabores]);
 }
+
+
 
 
 function adicionarPedido($conn) {
@@ -251,6 +281,170 @@ function deletarPedido($conn) {
     }
 }
 
+function buscarPedido($conn) {
+    $id_pedido = $_POST['id_pedido'] ?? null;
+
+    if (!$id_pedido) {
+        echo json_encode(['status' => 'error', 'mensagem' => 'ID do pedido não informado.']);
+        return;
+    }
+
+    // Buscar pedido
+    $sql = "SELECT p.id, p.id_cliente, c.nome AS nome_cliente, p.quantidade, p.valor_total 
+            FROM pedido p 
+            JOIN cliente c ON c.id = p.id_cliente 
+            WHERE p.id = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->execute([$id_pedido]);
+    $pedido = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$pedido) {
+        echo json_encode(['status' => 'error', 'mensagem' => 'Pedido não encontrado.']);
+        return;
+    }
+
+    // Buscar sabores do pedido
+    $sqlSabores = "SELECT ps.id_sabor, ps.tamanho, s.nome 
+                   FROM pedido_sabores ps 
+                   JOIN sabores_pizzas s ON s.id = ps.id_sabor 
+                   WHERE ps.id_pedido = ?";
+    $stmtSabores = $conn->prepare($sqlSabores);
+    $stmtSabores->execute([$id_pedido]);
+    $sabores = $stmtSabores->fetchAll(PDO::FETCH_ASSOC);
+
+    // Agrupar sabores por id e tamanho
+    $pizzas = [];
+    foreach ($sabores as $sabor) {
+        $key = $sabor['id_sabor'] . '_' . $sabor['tamanho'];
+        if (!isset($pizzas[$key])) {
+            $pizzas[$key] = [
+                'id' => $sabor['id_sabor'],
+                'nome' => $sabor['nome'],
+                'tamanho' => $sabor['tamanho'],
+                'quantidade' => 1
+            ];
+        } else {
+            $pizzas[$key]['quantidade']++;
+        }
+    }
+
+    // Reindexar
+    $pizzas = array_values($pizzas);
+
+    echo json_encode([
+        'status' => 'success',
+        'pedido' => $pedido,
+        'pizzas' => $pizzas
+    ]);
+}
+
+function editarPedido($conn) {
+    $id_pedido = $_POST['id_pedido'] ?? null;
+    $id_cliente = $_POST['cliente_id'] ?? null;
+    $pizzas_raw = $_POST['pizzas'] ?? null;
+
+    if (!$id_pedido || !$id_cliente || !$pizzas_raw) {
+        echo json_encode(['status' => 'error', 'mensagem' => 'Dados incompletos para editar o pedido.']);
+        return;
+    }
+
+    if (is_string($pizzas_raw)) {
+        $pizzas = json_decode($pizzas_raw, true);
+        if (!is_array($pizzas)) {
+            echo json_encode(['status' => 'error', 'mensagem' => 'Formato de pizzas inválido.']);
+            return;
+        }
+    } else {
+        $pizzas = $pizzas_raw;
+    }
+
+    $sqlExecutados = [];
+
+    try {
+        $conn->beginTransaction();
+
+        // Deletar sabores antigos
+        $sqlDeleteSabores = "DELETE FROM pedido_sabores WHERE id_pedido = ?";
+        $stmtDelete = $conn->prepare($sqlDeleteSabores);
+        $sqlExecutados[] = ['query' => $sqlDeleteSabores, 'params' => [$id_pedido]];
+        $stmtDelete->execute([$id_pedido]);
+
+        $valor_total = 0;
+        $quantidade_total = 0;
+
+        foreach ($pizzas as $pizza) {
+            $id_sabor = $pizza['id'] ?? null;
+            $tamanho = $pizza['tamanho'] ?? 'Pequena';
+            $quantidade = intval($pizza['quantidade'] ?? 0);
+
+            if (!$id_sabor || $quantidade <= 0) {
+                continue;
+            }
+
+            $sqlPreco = "SELECT valor FROM sabores_pizzas WHERE id = ?";
+            $stmtPreco = $conn->prepare($sqlPreco);
+            $sqlExecutados[] = ['query' => $sqlPreco, 'params' => [$id_sabor]];
+            $stmtPreco->execute([$id_sabor]);
+            $valor_base = $stmtPreco->fetchColumn();
+
+            if ($valor_base === false) {
+                continue;
+            }
+
+            switch ($tamanho) {
+                case 'Média':
+                    $valor_base *= 1.5;
+                    break;
+                case 'Grande':
+                    $valor_base *= 2;
+                    break;
+                case 'Pequena':
+                default:
+                    break;
+            }
+
+            $valor_total += $valor_base * $quantidade;
+            $quantidade_total += $quantidade;
+        }
+
+        if ($quantidade_total === 0) {
+            $conn->rollBack();
+            echo json_encode(['status' => 'error', 'mensagem' => 'Nenhuma pizza válida para o pedido.']);
+            return;
+        }
+
+        // Atualizar pedido
+        $sqlUpdatePedido = "UPDATE pedido SET id_cliente = ?, quantidade = ?, valor_total = ? WHERE id = ?";
+        $stmtUpdatePedido = $conn->prepare($sqlUpdatePedido);
+        $sqlExecutados[] = ['query' => $sqlUpdatePedido, 'params' => [$id_cliente, $quantidade_total, $valor_total, $id_pedido]];
+        $stmtUpdatePedido->execute([$id_cliente, $quantidade_total, $valor_total, $id_pedido]);
+
+        // Inserir sabores
+        $sqlInsertSabor = "INSERT INTO pedido_sabores (id_pedido, id_sabor, tamanho) VALUES (?, ?, ?)";
+        $stmtInsertSabor = $conn->prepare($sqlInsertSabor);
+
+        foreach ($pizzas as $pizza) {
+            $id_sabor = $pizza['id'];
+            $tamanho = $pizza['tamanho'] ?? 'Pequena';
+            $quantidade = intval($pizza['quantidade']);
+
+            for ($i = 0; $i < $quantidade; $i++) {
+                $sqlExecutados[] = ['query' => $sqlInsertSabor, 'params' => [$id_pedido, $id_sabor, $tamanho]];
+                $stmtInsertSabor->execute([$id_pedido, $id_sabor, $tamanho]);
+            }
+        }
+
+        $conn->commit();
+        echo json_encode([
+            'status' => 'success',
+            'mensagem' => 'Pedido editado com sucesso!',
+            'sql_executados' => $sqlExecutados
+        ]);
+    } catch (Exception $e) {
+        $conn->rollBack();
+        echo json_encode(['status' => 'error', 'mensagem' => 'Erro ao editar pedido: ' . $e->getMessage()]);
+    }
+}
 
 
 
