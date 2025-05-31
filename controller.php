@@ -7,8 +7,8 @@ $conn = $banco->getConnection();
 
 //faça uma verificação de qual a função solicitada
 
-if (isset($_POST['funcao'])) {
-    $funcao = $_POST['funcao'];
+if (isset($_REQUEST['funcao'])) {
+    $funcao = $_REQUEST['funcao'];
 }
 
 if ($funcao == 'listarPedidos') {
@@ -49,7 +49,9 @@ if ($funcao == 'deletarPizza') {
 if($funcao == 'editarPizza') {
     editarPizza($conn);
 }
-
+if($funcao == 'detalhesPizza') {
+    detalhesPizza($conn);
+}
 
 
 function listarPedidos($conn) {
@@ -367,6 +369,38 @@ function editarPizza() {
         echo json_encode(['status' => 'error', 'mensagem' => 'Erro no servidor: ' . $e->getMessage()]);
     }
 }
+
+function detalhesPizza($conn) {
+
+    if (!isset($_GET['id'])) {
+        echo json_encode([
+            'status' => 'error',
+            'mensagem' => 'ID da pizza não informado.'
+        ]);
+        exit;
+    }
+
+    $id = intval($_GET['id']);
+
+    $sql = "SELECT * FROM sabores_pizzas WHERE id = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->execute([$id]);
+    $pizza = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$pizza) {
+        echo json_encode([
+            'status' => 'error',
+            'mensagem' => 'Pizza não encontrada.'
+        ]);
+        exit;
+    }
+
+    echo json_encode([
+        'status' => 'success',
+        'pizza' => $pizza
+    ]);
+}
+
 
 
 ?>
