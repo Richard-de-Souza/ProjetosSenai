@@ -1,5 +1,3 @@
-<?php include 'template_start.php'; ?>
-
 <?php
 session_start();
 
@@ -94,7 +92,7 @@ if (!isset($_SESSION['usuario_logado'])) {
 <body>
 
 <!-- Sidebar -->
-<div id="sidebar" class="sidebar position-fixed">
+<div class="sidebar position-fixed d-flex flex-column justify-content-between">
     <ul class="nav flex-column pt-3">
         <li class="nav-item">
             <a class="nav-link" href="index.php"><i class="bi bi-house-door-fill"></i><span> Início</span></a>
@@ -109,16 +107,11 @@ if (!isset($_SESSION['usuario_logado'])) {
             <a class="nav-link" href="clientes.php"><i class="bi bi-people"></i><span> Clientes</span></a>
         </li>
     </ul>
-    <ul class="nav flex-column" style="position: absolute; bottom: 0; width: 100%; margin-bottom: 10px;">
-    <li class="nav-item">
-      <a class="nav-link" href="logout.php"><i class="bi bi-box-arrow-right"></i><span> Logout</span></a>
-    </li>
-  </ul>
-  <ul class="nav flex-column" style="position: absolute; bottom: 0; width: 100%; margin-bottom: 10px;">
-    <li class="nav-item">
-      <a class="nav-link" href="logout.php"><i class="bi bi-box-arrow-right"></i><span> Logout</span></a>
-    </li>
-  </ul>
+    <ul class="nav flex-column pt-3 mb-2">
+        <li class="nav-item">
+            <a class="nav-link" href="logout.php"><i class="bi bi-box-arrow-right"></i><span> Logout</span></a>
+        </li>
+    </ul>
 
 </div>
 
