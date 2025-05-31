@@ -1,3 +1,17 @@
+<?php include 'template_start.php'; ?>
+
+<?php
+session_start();
+
+// Verifica se o usuário está logado
+if (!isset($_SESSION['usuario_logado'])) {
+    // Redireciona para a página de login
+    header('Location: login.php');
+    exit();
+}
+?>
+
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -95,6 +109,17 @@
             <a class="nav-link" href="clientes.php"><i class="bi bi-people"></i><span> Clientes</span></a>
         </li>
     </ul>
+    <ul class="nav flex-column" style="position: absolute; bottom: 0; width: 100%; margin-bottom: 10px;">
+    <li class="nav-item">
+      <a class="nav-link" href="logout.php"><i class="bi bi-box-arrow-right"></i><span> Logout</span></a>
+    </li>
+  </ul>
+  <ul class="nav flex-column" style="position: absolute; bottom: 0; width: 100%; margin-bottom: 10px;">
+    <li class="nav-item">
+      <a class="nav-link" href="logout.php"><i class="bi bi-box-arrow-right"></i><span> Logout</span></a>
+    </li>
+  </ul>
+
 </div>
 
 
