@@ -31,7 +31,15 @@ $(document).ready(function () {
             url: 'controller.php',
             type: 'POST',
             data: { funcao: 'listarClientes' },
-            dataSrc: ''
+            dataSrc: function (json) {
+                // Exibir o SQL com Swal
+                Swal.fire({
+                    title: 'SQL Executado',
+                    text: json.sql,
+                    icon: 'info'
+                });
+                return json.dados;
+            }
         },
         columns: [
             { data: 'id' },
@@ -54,6 +62,7 @@ $(document).ready(function () {
         }
     });
 });
+
 
 function deletarCliente(id) {
     Swal.fire({

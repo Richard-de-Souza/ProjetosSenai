@@ -33,7 +33,15 @@ $(document).ready(function () {
             url: 'controller.php',
             type: 'POST',
             data: { funcao: 'listarPizzas' },
-            dataSrc: ''
+            dataSrc: function (json) {
+                // Exibe o SQL recebido no swal
+                Swal.fire({
+                    title: 'SQL Executado',
+                    text: json.sql,
+                    icon: 'info'
+                });
+                return json.dados; // popula a tabela com os dados
+            }
         },
         columns: [
             { data: 'id' },
@@ -58,7 +66,6 @@ $(document).ready(function () {
             "info": "Mostrando de _START_ até _END_ de _TOTAL_ registros",
             "infoEmpty": "Mostrando 0 até 0 de 0 registros",
             "infoFiltered": "(filtrado de _MAX_ registros no total)",
-            "infoPostFix": "",
             "thousands": ".",
             "lengthMenu": "Mostrar _MENU_ registros",
             "loadingRecords": "Carregando...",
@@ -78,6 +85,7 @@ $(document).ready(function () {
         }
     });
 });
+
 
 // Função para deletar pizza (futura implementação)
 function deletarPizza(id) {

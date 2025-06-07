@@ -42,71 +42,88 @@ $(document).ready(function () {
         return 'R$ ' + valor.toFixed(2).replace('.', ',');
     }
 
-    // Carregar clientes
+    // Carregar clientes e mostrar SQL
     $.post('controller.php', { funcao: 'listarClientes' }, function(res) {
         try {
-            const clientes = JSON.parse(res);
-            clientes.forEach(c => {
-                $('#cliente_id').append(`<option value="${c.id}">${c.nome}</option>`);
+            const json = JSON.parse(res);
+
+            Swal.fire({
+                title: 'SQL Clientes Executado',
+                text: json.sql,
+                icon: 'info'
+            }).then(() => {
+                // Preencher select de clientes
+                json.dados.forEach(c => {
+                    $('#cliente_id').append(`<option value="${c.id}">${c.nome}</option>`);
+                });
+
+                // Após clientes, carregar pizzas e mostrar SQL
+                $.post('controller.php', { funcao: 'listarPizzas' }, function(res2) {
+                    try {
+                        const json2 = JSON.parse(res2);
+
+                        Swal.fire({
+                            title: 'SQL Pizzas Executado',
+                            text: json2.sql,
+                            icon: 'info'
+                        });
+
+                        // Preencher lista de pizzas
+                        json2.dados.forEach(p => {
+                            const preco = parseFloat(p.valor);
+                            $('#lista-pizzas').append(`
+                                <div class="row align-items-center mb-2 pizza-item" data-preco-base="${preco}" data-id="${p.id}">
+                                    <div class="col-auto">
+                                        <input type="checkbox" class="form-check-input pizza-checkbox" id="pizza-${p.id}" value="${p.id}">
+                                    </div>
+                                    <div class="col">
+                                        <label for="pizza-${p.id}" class="fw-bold">${p.nome}</label>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <select class="form-select form-select-sm pizza-tamanho" disabled>
+                                            <option value="Pequena">Pequena</option>
+                                            <option value="Média">Média</option>
+                                            <option value="Grande">Grande</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <input type="number" min="1" class="form-control form-control-sm pizza-quantidade" placeholder="Qtd" disabled>
+                                    </div>
+                                    <div class="col-md-2 text-end">
+                                        <span class="pizza-preco text-muted">${formatarPreco(preco)}</span>
+                                    </div>
+                                </div>
+                            `);
+                        });
+
+                        // Checkbox habilita/desabilita tamanho e quantidade
+                        $('.pizza-checkbox').on('change', function () {
+                            const linha = $(this).closest('.pizza-item');
+                            const checked = $(this).is(':checked');
+                            linha.find('.pizza-tamanho, .pizza-quantidade').prop('disabled', !checked);
+                            if (!checked) {
+                                linha.find('.pizza-quantidade').val('');
+                            } else {
+                                linha.find('.pizza-quantidade').val(1);
+                            }
+                            atualizarPrecoLinha(linha);
+                            atualizarTotal();
+                        });
+
+                        // Atualizar preço linha e total ao mudar tamanho ou quantidade
+                        $('#lista-pizzas').on('change input', '.pizza-tamanho, .pizza-quantidade', function () {
+                            const linha = $(this).closest('.pizza-item');
+                            atualizarPrecoLinha(linha);
+                            atualizarTotal();
+                        });
+
+                    } catch (e) {
+                        console.error('Erro ao carregar pizzas');
+                    }
+                });
             });
         } catch (e) {
             console.error('Erro ao carregar clientes');
-        }
-    });
-
-    // Carregar pizzas
-    $.post('controller.php', { funcao: 'listarPizzas' }, function(res) {
-        try {
-            const pizzas = JSON.parse(res);
-            pizzas.forEach(p => {
-                const preco = parseFloat(p.valor);
-                $('#lista-pizzas').append(`
-                    <div class="row align-items-center mb-2 pizza-item" data-preco-base="${preco}" data-id="${p.id}">
-                        <div class="col-auto">
-                            <input type="checkbox" class="form-check-input pizza-checkbox" id="pizza-${p.id}" value="${p.id}">
-                        </div>
-                        <div class="col">
-                            <label for="pizza-${p.id}" class="fw-bold">${p.nome}</label>
-                        </div>
-                        <div class="col-md-2">
-                            <select class="form-select form-select-sm pizza-tamanho" disabled>
-                                <option value="Pequena">Pequena</option>
-                                <option value="Média">Média</option>
-                                <option value="Grande">Grande</option>
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <input type="number" min="1" class="form-control form-control-sm pizza-quantidade" placeholder="Qtd" disabled>
-                        </div>
-                        <div class="col-md-2 text-end">
-                            <span class="pizza-preco text-muted">${formatarPreco(preco)}</span>
-                        </div>
-                    </div>
-                `);
-            });
-
-            // Checkbox habilita/desabilita campos
-            $('.pizza-checkbox').on('change', function () {
-                const linha = $(this).closest('.pizza-item');
-                const checked = $(this).is(':checked');
-                linha.find('.pizza-tamanho, .pizza-quantidade').prop('disabled', !checked);
-                if (!checked) {
-                    linha.find('.pizza-quantidade').val('');
-                } else {
-                    linha.find('.pizza-quantidade').val(1);
-                }
-                atualizarPrecoLinha(linha);
-                atualizarTotal();
-            });
-
-            // Atualizar preço linha e total ao mudar tamanho ou quantidade
-            $('#lista-pizzas').on('change input', '.pizza-tamanho, .pizza-quantidade', function () {
-                const linha = $(this).closest('.pizza-item');
-                atualizarPrecoLinha(linha);
-                atualizarTotal();
-            });
-        } catch (e) {
-            console.error('Erro ao carregar pizzas');
         }
     });
 

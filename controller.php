@@ -83,14 +83,22 @@ function listarPedidos($conn) {
     $stmt->execute();
     $pedidos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    echo json_encode($pedidos);
+    echo json_encode([
+        'status' => 'success',
+        'sql' => $sql,
+        'pedidos' => $pedidos
+    ]);
 }
 
 function detalhesPedido($conn) {
     $id_pedido = $_POST['id_pedido'] ?? 0;
     $id_pedido = intval($id_pedido);
     if ($id_pedido <= 0) {
-        echo json_encode(['status' => 'error', 'mensagem' => 'ID do pedido inválido']);
+        echo json_encode([
+            'status' => 'error',
+            'mensagem' => 'ID do pedido inválido',
+            'sql' => null
+        ]);
         return;
     }
 
@@ -98,6 +106,7 @@ function detalhesPedido($conn) {
             FROM pedido_sabores ps
             JOIN sabores_pizzas sp ON sp.id = ps.id_sabor
             WHERE ps.id_pedido = ?";
+
     $stmt = $conn->prepare($sql);
     $stmt->execute([$id_pedido]);
     $sabores = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -106,7 +115,6 @@ function detalhesPedido($conn) {
         $valor_base = floatval($item['valor']);
         $tamanho = strtolower($item['tamanho']);
 
-        // Define multiplicador por tamanho
         switch ($tamanho) {
             case 'pequena':
             case 'p':
@@ -121,7 +129,7 @@ function detalhesPedido($conn) {
                 $multiplicador = 2.0;
                 break;
             default:
-                $multiplicador = 1.0; // fallback
+                $multiplicador = 1.0;
         }
 
         $valor_final = $valor_base * $multiplicador;
@@ -129,7 +137,11 @@ function detalhesPedido($conn) {
         $item['valor_formatado'] = 'R$ ' . number_format($valor_final, 2, ',', '.');
     }
 
-    echo json_encode(['status' => 'success', 'sabores' => $sabores]);
+    echo json_encode([
+        'status' => 'success',
+        'sql' => $sql,
+        'sabores' => $sabores
+    ]);
 }
 
 
@@ -455,7 +467,11 @@ function listarClientes($conn) {
     $stmt = $conn->prepare($sql);
     $stmt->execute();
     $clientes = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    echo json_encode($clientes);
+
+    echo json_encode([
+        'sql' => $sql,
+        'dados' => $clientes
+    ]);
 }
 
 function adicionarCliente($conn) {
@@ -559,7 +575,14 @@ function listarPizzas($conn) {
     $stmt = $conn->prepare($sql);
     $stmt->execute();
     $pizzas = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    echo json_encode($pizzas);
+
+    // Criar array com os dados e o SQL
+    $resultado = [
+        'sql' => $sql,
+        'dados' => $pizzas
+    ];
+
+    echo json_encode($resultado);
 }
 
 function adicionarPizza($conn) {
